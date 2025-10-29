@@ -14,3 +14,6 @@ __pycache__/
 
 # Build scripts
 build.sh
+
+# Data folder
+data/

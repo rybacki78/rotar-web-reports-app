@@ -11,7 +11,11 @@ st.set_page_config(
     layout="wide",
 )
 
-st.logo("assets/Logo-Rotar-lichtgrijs.png", icon_image="assets/Logo-Rotar-lichtgrijs.png", size="medium")
+st.logo(
+    "assets/Logo-Rotar-lichtgrijs.png",
+    icon_image="assets/Logo-Rotar-lichtgrijs.png",
+    size="medium",
+)
 
 """
 # :material/query_stats: Production stock analysis
@@ -113,90 +117,81 @@ right_bottom_cell = cols[1].container(
 
 @st.cache_resource(ttl="2d", show_spinner=True)
 def load_data():
-    return pd.read_csv(CSV_VALUE, parse_dates=["date"]), pd.read_csv(
-        CSV_QUANTITY, parse_dates=["date"]
+    return pd.read_csv(CSV_VALUE, parse_dates=["date"], index_col="date"), pd.read_csv(
+        CSV_QUANTITY, parse_dates=["date"], index_col="date"
     )
 
 
 def narrow_data(tickers, period):
     df_value, df_quantity = load_data()
-    needed_columns = ["date"] + tickers
 
-    return df_value[needed_columns].tail(period), df_quantity[needed_columns].tail(
-        period
-    )
+    print(df_value.info())
+
+    # needed_columns = ["date"] + tickers
+
+    return df_value[tickers].tail(period), df_quantity[tickers].tail(period)
 
 
 df_value, df_quantity = narrow_data(tickers, int(horizon_map[horizon]))
 
-cols = [c for c in df_value.columns if c != "date"]
-value_long = df_value.melt(
-    id_vars="date", value_vars=cols, var_name="series", value_name="value"
-)
-tick_values = pd.date_range(
-    df_value["date"].min().normalize(), df_value["date"].max().normalize(), freq="ME"
-)
 
-value_chart = (
-    alt.Chart(value_long, title="Evolution of production stock values")
-    .mark_line()
-    .encode(
-        x=alt.X(
-            "date:T",
-            axis=alt.Axis(
-                title=None,
-                values=list(tick_values),
-                format="%b %y",
-                tickSize=4,
-            ),
-        ),
-        y=alt.Y(
-            "value:Q",
-            axis=alt.Axis(title="Value", format="~s"),
-        ),
-        color=alt.Color("series:N", title="Assortments"),
+def chart(df: pd.DataFrame):
+    source = df.reset_index().melt("date", var_name="assortment", value_name="value")
+
+    nearest = alt.selection_point(
+        nearest=True, on="pointerover", fields=["date"], empty=False
     )
-    .properties(height=400)
-    .interactive()
-)
 
-quantity_long = df_quantity.melt(
-    id_vars="date", value_vars=cols, var_name="series", value_name="quantity"
-)
-tick_quantities = pd.date_range(
-    df_quantity["date"].min().normalize(),
-    df_quantity["date"].max().normalize(),
-    freq="ME",
-)
-
-quantity_chart = (
-    alt.Chart(quantity_long, title="Evolution of production stock quantities")
-    .mark_line()
-    .encode(
-        x=alt.X(
-            "date:T",
-            axis=alt.Axis(
-                title=None,
-                values=list(tick_quantities),
-                format="%b %y",
-                tickSize=4,
+    line = (
+        alt.Chart(source)
+        .mark_line()
+        .encode(
+            alt.X(
+                "yearmonth(date):T",
             ),
-        ),
-        y=alt.Y(
-            "quantity:Q",
-            axis=alt.Axis(title="Quantity", format="~s"),
-        ),
-        color=alt.Color("series:N", title="Assortments"),
+            alt.Y("value:Q", axis=alt.Axis(format="~s")),
+            color="assortment:N",
+        )
     )
-    .properties(height=400)
-    .interactive()
-)
+
+    selectors = (
+        alt.Chart(source)
+        .mark_point()
+        .encode(
+            alt.X("yearmonth(date):T"),
+            opacity=alt.value(0),
+        )
+        .add_params(nearest)
+    )
+    when_near = alt.when(nearest)
+
+    points = line.mark_point().encode(
+        opacity=when_near.then(alt.value(1)).otherwise(alt.value(0))
+    )
+
+    text = line.mark_text(align="left", dx=10, dy=-10, fontSize=14, fontWeight="bold").encode(
+        text=when_near.then(alt.Text("value:Q", format=".2s")).otherwise(alt.value(" ")), color=alt.value("lightgray")
+    )
+
+    rules = (
+        alt.Chart(source)
+        .mark_rule(color="gray")
+        .encode(
+            alt.X("yearmonth(date):T"),
+        )
+        .transform_filter(nearest)
+    )
+
+    layers = alt.layer(line, selectors, points, rules, text).properties(height=400)
+
+    return layers
+
 
 with right_top_cell:
-    st.altair_chart(value_chart)
+    st.altair_chart(chart(df_value))
 
 with right_bottom_cell:
-    st.altair_chart(quantity_chart)
+    st.altair_chart(chart(df_quantity))
 
 
 """
@@ -215,5 +210,5 @@ column_config = {
 }
 
 
-st.dataframe(df_value, hide_index=True, column_config=column_config)
-st.dataframe(df_quantity, hide_index=True, column_config=column_config)
+st.dataframe(df_value, column_config=column_config)
+st.dataframe(df_quantity, column_config=column_config)
