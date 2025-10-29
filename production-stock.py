@@ -82,7 +82,7 @@ horizon_map = {
     "1 Year": "12",
     "3 Years": "36",
     "5 Years": "60",
-    "10 Years": "600",
+    "10 Years": "120",
 }
 
 with top_left_cell:
