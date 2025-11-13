@@ -125,10 +125,6 @@ def load_data():
 def narrow_data(tickers, period):
     df_value, df_quantity = load_data()
 
-    print(df_value.info())
-
-    # needed_columns = ["date"] + tickers
-
     return df_value[tickers].tail(period), df_quantity[tickers].tail(period)
 
 

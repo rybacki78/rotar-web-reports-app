@@ -20,7 +20,7 @@ CRON_FILE="/etc/cron.monthly/update-stock-data"
   echo "SHELL=/bin/bash"
   echo "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
   echo "CRON_TZ=${TZ}"
-  echo "0 0 15 * * root cd /app && /usr/local/bin/python \"$JOB_SCRIPT\" >> /var/log/cron.log 2>&1"
+  echo "0 0 7 * * root cd /app && /usr/local/bin/python \"$JOB_SCRIPT\" >> /var/log/cron.log 2>&1"
 } > "$CRON_FILE"
 
 chmod 0644 "$CRON_FILE"
